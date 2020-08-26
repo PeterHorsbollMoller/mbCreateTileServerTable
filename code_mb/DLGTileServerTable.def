@@ -1,0 +1,25 @@
+Declare Function DLGTileServerTable() As Logical
+
+Declare Sub DTSTSetConfigFileName(ByVal sFileName As String)
+Declare Sub DTSTReadConfigFile
+Declare Sub DTSTWriteConfigFile
+
+Declare Function DTSTGetTabFileName() As String
+Declare Function DTSTGetTableName() As String
+Declare Function DTSTGetURL() As String
+Declare Function DTSTGetTileServerType() As Integer		'TILE_SERVER_TYPE_LEVELROWCOLUMN or TILE_SERVER_TYPE_QUADKEY
+Declare Function DTSTGetTileServerTypeAsText() As String	'"LevelRowColumn" or "QuadKey"
+Declare Function DTSTGetAttributionText() As String
+Declare Function DTSTGetAttributionFont() As Font
+Declare Function DTSTGetStartTile() As Integer		'0 or 1
+Declare Function DTSTGetMinimumTileLevel() As Integer
+Declare Function DTSTGetMaximumTileLevel() As Integer
+Declare Function DTSTGetTileOrigin() As Integer		'TILE_ORIGIN_SW or TILE_ORIGIN_NW
+Declare Function DTSTGetTileOriginAsText() As String		'"NW" or "SW"
+Declare Function DTSTGetTilePixelWidth() As Integer
+Declare Function DTSTGetTilePixelHeight() As Integer
+Declare Function DTSTGetCoordSysEPSG() As String
+Declare Function DTSTGetCoordSysItem() As Integer
+Declare Function DTSTGetCoordSys() As String
+
+Declare Sub DTSTCreateTileServerTable()

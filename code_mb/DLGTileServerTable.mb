@@ -1,0 +1,757 @@
+'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Pitney Bowes
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\ARRAYLib.def"
+Include "Library\CONFIGFILELib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\TABLELib.def"
+Include "Library\STYLELib.def"
+
+Include "DLGTileServerTable.def"
+
+Define	TILE_SERVER_TYPE_LEVELROWCOLUMN 	1
+Define	TILE_SERVER_TYPE_QUADKEY			2
+Define	TILE_ORIGIN_NW					1
+Define	TILE_ORIGIN_SW					2
+
+Define	CTRL_TXT_TABFILE				100
+Define	CTRL_LST_TILE_SERVER_TYPE		200
+Define	CTRL_TXT_URL					300
+Define	CTRL_LST_URL_EXAMPLES			310
+Define	CTRL_TXT_ATTRIBUTION			400
+Define	CTRL_FNT_ATTRIBUTION			410
+Define	CTRL_LST_STARTTILE				500
+Define	CTRL_TXT_MIN_TILELEVEL			510
+Define	CTRL_TXT_MAX_TILELEVEL			520
+Define	CTRL_LST_TILEORIGIN				600
+Define	CTRL_TXT_TILE_HEIGHT			700
+Define	CTRL_CHK_TILE_WIDTH				710
+Define	CTRL_TXT_TILE_WIDTH				720
+Define	CTRL_TXT_COORDSYS_EPSG			800
+Define	CTRL_LST_COORDSYS				810
+
+Declare Sub DTSTHandler_Unload
+Declare Sub DTSTHandler_SelectTableName
+
+Dim	msConfileFileName As String,
+	msTabFileName, msURL, msCoordSysEPSG As String,
+	mnTileServerType As Integer,	'TILE_SERVER_TYPE_LEVELROWCOLUMN or TILE_SERVER_TYPE_QUADKEY
+	msAttributionText As String,
+	mfAttributionFont As Font,
+	mnStartTile, mnMinimumTileLevel, mnMaximumTileLevel, mnTilePixelWidth, mnTilePixelHeight As Integer,
+	mnTileOrigin, mnCoordsysItem As Integer,		'TILE_ORIGIN_SW or TILE_ORIGIN_NW
+	marrCoordsys(), marrCoordsysNames() As String
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGTileServerTable() As Logical
+
+OnError GoTo ErrorOccured
+
+DLGTileServerTable = FALSE
+
+	If msTabFileName = "" Then
+'		msTabFileName = PathToDirectory$(TempFileName$("")) & "Tile Server Table.tab"
+		msTabFileName = PathToDirectory$(GetPreferencePath$(PREFERENCE_PATH_WMSTABLE)) & "Tile Server Table.tab"
+	End If
+	If msURL = "" Then
+		msURL = "https://api.tomtom.com/traffic/map/4/tile/flow/absolute/{LEVEL}/{ROW}/{COL}.png?key=XEP7IgpnlLF88q2ZnoZMH92A3R2MSRIc"
+	End If
+
+	Dialog
+		Title "Create Tile Server Table"
+
+		Control StaticText		Position 5,5
+			Title "Tab File Name"
+		Control EditText		Position 5,15		Width 345				ID CTRL_TXT_TABFILE
+			Value DTSTGetTabFileName()
+		Control Button			Position 350,15	Width 15	Height 12
+			Title "..."
+			Calling DTSTHandler_SelectTableName
+
+		Control StaticText		Position 5,30
+			Title "Tile Server URL"
+		Control EditText		Position 5,40		Width 360	Height 30		ID CTRL_TXT_URL
+			Value DTSTGetURL()
+		Control StaticText		Position 5,75
+			Title "Sometimes you need to switch the order of the {COL} and {ROW} parameters"
+		Control StaticText		Position 5,85
+			Title "Typically, a OSM based service needs to be specified as '{LEVEL}/{ROW}/{COL}' in MapInfo Pro"
+
+		Control StaticText		Position 5,100
+			Title "Tile Server Type"
+		Control PopupMenu		Position 5,110		Width 100				ID CTRL_LST_TILE_SERVER_TYPE
+			Title "Level Row Column;Quad Key"
+			Value IIf(DTSTGetTileServerType()=TILE_SERVER_TYPE_QUADKEY, TILE_SERVER_TYPE_QUADKEY, TILE_SERVER_TYPE_LEVELROWCOLUMN)
+
+		Control StaticText		Position 110,100
+			Title "Attribution/Copyright Text"
+		Control EditText		Position 110,110	Width 230				ID CTRL_TXT_ATTRIBUTION
+			Value DTSTGetAttributionText()
+		Control FontPicker		Position 343,100	Width 22	Height 22		ID CTRL_FNT_ATTRIBUTION
+			Value DTSTGetAttributionFont()
+
+		Control StaticText		Position 5,130
+			Title "Start Tile Num"
+		Control PopupMenu		Position 5,140		Width 60				ID CTRL_LST_STARTTILE
+			Title "0;1"
+			Value IIf(DTSTGetStartTile() = 1, 2, 1)
+
+		Control StaticText		Position 70,130
+			Title "Minimum and Maximum Tile Level"
+		Control EditText		Position 70,140	Width 60				ID CTRL_TXT_MIN_TILELEVEL
+			Value IIf(DTSTGetMinimumTileLevel() = 0,"", Str$(DTSTGetMinimumTileLevel()))
+		Control EditText		Position 135,140	Width 60				ID CTRL_TXT_MAX_TILELEVEL
+			Value Str$(DTSTGetMaximumTileLevel())
+
+		Control StaticText		Position 200,130
+			Title "Origin"
+		Control PopupMenu		Position 200,140	Width 60				ID CTRL_LST_TILEORIGIN
+			Title "NW;SW"
+			Value IIF(DTSTGetTileOrigin()=TILE_ORIGIN_SW, 2, 1)
+
+		Control StaticText		Position 270,130
+			Title "Tile Size, pixels (H x W)"
+		Control EditText		Position 270,140	Width 40				ID CTRL_TXT_TILE_HEIGHT
+			Value Str$(DTSTGetTilePixelHeight())
+		Control StaticText		Position 315,140
+			Title "x"
+		Control EditText		Position 325,140	Width 40				ID CTRL_TXT_TILE_WIDTH
+			Value IIF(DTSTGetTilePixelWidth()=0, "", Str$(DTSTGetTilePixelWidth()))
+
+		Control StaticText		Position 5,160
+			Title "Coordsys to use"
+'		Control EditText		Position 5,170		Width 200				ID CTRL_TXT_COORDSYS_EPSG
+'			Value DTSTGetCoordSysEPSG()
+		Control PopupMenu		Position 5,170		Width 240				ID CTRL_LST_COORDSYS
+			Title From Variable marrCoordsysNames
+			Value IIf(DTSTGetCoordSysItem() = 0, 1, DTSTGetCoordSysItem())
+
+		Control OKButton		Position 260,170	Width 50
+			Title "Create"
+			Calling DTSTHandler_Unload
+		Control CancelButton	Position 315,170	Width 50
+			Title "Close"
+
+	If not CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Function
+	End If
+
+	DLGTileServerTable = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGTileServerTable")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DTSTHandler_SelectTableName
+
+Dim	sFile, sPath As String
+
+OnError GoTo ErrorOccured
+
+	sFile	= ReadControlValue(CTRL_TXT_TABFILE)
+	If sFile = "" Then
+		sPath = ""
+		sFile = "Tile Server Table.tab"
+	Else
+		sPath = PathToDirectory$(sFile)
+		sFile = PathToFileName$(sFile)
+	End If
+
+	sFile = FileSaveAsDlg(sPath, sFile, "TAB", "Select name of new tile server table...")
+	If sFile = "" Then
+		Exit Sub
+	End If
+
+	Alter Control CTRL_TXT_TABFILE Value sFile
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTHandler_SelectTableName")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DTSTHandler_Unload
+
+OnError GoTo ErrorOccured
+
+	msTabFileName		= ReadControlValue(CTRL_TXT_TABFILE)
+	msURL			= ReadControlValue(CTRL_TXT_URL)
+	mnTileServerType	= ReadControlValue(CTRL_LST_TILE_SERVER_TYPE)
+	msAttributionText	= ReadControlValue(CTRL_TXT_ATTRIBUTION)
+	mfAttributionFont	= ReadControlValue(CTRL_FNT_ATTRIBUTION)
+	mnStartTile		= (ReadControlValue(CTRL_LST_STARTTILE) - 1)
+	mnMinimumTileLevel	= ReadControlValue(CTRL_TXT_MIN_TILELEVEL)
+	mnMaximumTileLevel	= ReadControlValue(CTRL_TXT_MAX_TILELEVEL)
+	mnTilePixelWidth	= ReadControlValue(CTRL_TXT_TILE_WIDTH)
+	mnTilePixelHeight	= ReadControlValue(CTRL_TXT_TILE_HEIGHT)
+	mnTileOrigin		= ReadControlValue(CTRL_LST_TILEORIGIN)
+'	msCoordSysEPSG 	= ReadControlValue(CTRL_TXT_COORDSYS_EPSG)
+	mnCoordsysItem		= ReadControlValue(CTRL_LST_COORDSYS)
+
+'	Create Table tomtom_traffic
+'	  File "D:\Dropbox (Horsboll-Moller)\4. MapInfo Tools\Favorite Maps\Basemaps\tomtom traffic.TAB"
+'	  Type TILESERVER
+'	  TileType "LevelRowColumn"
+'	  URL "https://api.tomtom.com/traffic/map/4/tile/flow/absolute/{LEVEL}/{ROW}/{COL}.png?key=XEP7IgpnlLF88q2ZnoZMH92A3R2MSRIc"
+'	  AttributionText "tomtom" Font ("Arial",258,8,22015,16777215)
+'	  StartTileNum 0 MaxLevel 22 Origin "NW" Height 256
+'	  CoordSys Earth Projection 10, 157, 7, 0 Bounds(-20037508.34,-20037508.34) (20037508.34,20037508.34)
+
+	Call DTSTCreateTileServerTable
+	Call DTSTWriteConfigFile
+
+	Dialog Preserve
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTHandler_Unload")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DTSTSetConfigFileName(ByVal sFileName As String)
+
+OnError GoTo ErrorOccured
+
+	msConfileFileName = sFileName
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTSetConfigFileName")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DTSTReadConfigFile
+
+Dim	nItem, nNoneFound As Integer,
+	sCoordsys, sName As String
+
+OnError GoTo ErrorOccured
+
+	mnMinimumTileLevel = 1
+	mnMaximumTileLevel = 20
+	msCoordSysEPSG		= "3857"
+	mnTileServerType 	= TILE_SERVER_TYPE_LEVELROWCOLUMN
+	msAttributionText 	= ""
+	mfAttributionFont 	= MakeFont("Arial", 258, 8, 22015, 16777215)
+	mnStartTile		= 0
+	mnMinimumTileLevel	= 1
+	mnMaximumTileLevel	= 20
+	mnTilePixelWidth	= 256
+	mnTilePixelHeight	= 256
+	mnTileOrigin		= TILE_ORIGIN_NW
+
+	If FileExists(msConfileFileName) Then
+		msURL			= CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "URL")
+		msCoordSysEPSG		= CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "EPSG")
+		mnTileServerType	= IIF(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "SERVERTYPE") = "QuadKey", TILE_SERVER_TYPE_QUADKEY, TILE_SERVER_TYPE_LEVELROWCOLUMN)
+		msAttributionText	= CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "ATTRIBUTION")
+		mfAttributionFont	= STLText2Font(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "ATTRIBUTION_FONT"))
+		mnStartTile		= Val(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "STARTTILE"))
+		mnMinimumTileLevel	= Val(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "MIN_TILE_LEVEL"))
+		mnMaximumTileLevel	= Val(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "MAX_TILE_LEVEL"))
+		mnTileOrigin		= IIF(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "TILE_ORIGIN") = "NW", TILE_ORIGIN_NW, TILE_ORIGIN_SW)
+		mnTilePixelHeight	= Val(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "TILE_HEIGHT_PIXEL"))
+		mnTilePixelWidth	= Val(CONFIGReadKey(msConfileFileName, "LASTUSEDSETTINGS", "TILE_WIDTH_PIXEL"))
+	End If
+
+	Print "local file: " & ApplicationDirectory$() & PathToFileName$(msConfileFileName)
+	Do While TRUE
+		nItem = nItem + 1
+
+		sCoordsys	= CONFIGReadKey(ApplicationDirectory$() & PathToFileName$(msConfileFileName), "COORDSYS", "COORDSYS" & nItem)
+		sName	= CONFIGReadKey(ApplicationDirectory$() & PathToFileName$(msConfileFileName), "COORDSYS", "COORDSYSNAME" & nItem)
+
+		Print nItem & ": " & sCoordsys
+		Print nItem & ": " & sName
+
+		If sCoordsys = "" Then
+			nNoneFound = nNoneFound + 1
+		Else
+			nNoneFound	= 0
+			Call ARRAYAddValueString(marrCoordsys(), sCoordsys)
+			Call ARRAYAddValueString(marrCoordsysNames(), IIf(sName="", sCoordsys, sName))
+		End If
+
+		If nNoneFound > 5 Then
+			Exit Do
+		End If
+	Loop
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTReadConfigFile")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DTSTWriteConfigFile
+
+OnError GoTo ErrorOccured
+
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "URL", DTSTGetURL())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "EPSG", DTSTGetCoordSysEPSG())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "SERVERTYPE", DTSTGetTileServerTypeAsText())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "ATTRIBUTION", DTSTGetAttributionText())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "ATTRIBUTION_FONT", STLFont2Text(DTSTGetAttributionFont()))
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "STARTTILE", DTSTGetStartTile())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "MIN_TILE_LEVEL", DTSTGetMinimumTileLevel())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "MAX_TILE_LEVEL", DTSTGetMaximumTileLevel())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "TILE_ORIGIN", DTSTGetTileOriginAsText())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "TILE_HEIGHT_PIXEL", DTSTGetTilePixelHeight())
+	Call CONFIGWriteKey(msConfileFileName, "LASTUSEDSETTINGS", "TILE_WIDTH_PIXEL", DTSTGetTilePixelWidth())
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTWriteConfigFile")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTabFileName() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTabFileName = msTabFileName
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTabFileName")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTableName() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTableName = PathToTableName$(DTSTGetTabFileName())
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTableName")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetURL() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetURL = msURL
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetURL")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTileServerType() As Integer	'TILE_SERVER_TYPE_LEVELROWCOLUMN or TILE_SERVER_TYPE_QUADKEY
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTileServerType = mnTileServerType
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTileServerType")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTileServerTypeAsText() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTileServerTypeAsText = ""
+
+	Do Case DTSTGetTileServerType()
+		Case TILE_SERVER_TYPE_LEVELROWCOLUMN
+			DTSTGetTileServerTypeAsText = "LevelRowColumn"
+		Case TILE_SERVER_TYPE_QUADKEY
+			DTSTGetTileServerTypeAsText = "QuadKey"
+	End Case
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTileServerTypeAsText")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetAttributionText() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetAttributionText = msAttributionText
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetAttributionText")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetAttributionFont() As Font
+
+OnError GoTo ErrorOccured
+
+	DTSTGetAttributionFont = mfAttributionFont
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetAttributionFont")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetStartTile() As Integer		'0 or 1
+
+OnError GoTo ErrorOccured
+
+	DTSTGetStartTile = mnStartTile
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetStartTile")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetMinimumTileLevel() As Integer
+
+OnError GoTo ErrorOccured
+
+	DTSTGetMinimumTileLevel = mnMinimumTileLevel
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetMinimumTileLevel")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetMaximumTileLevel() As Integer
+
+OnError GoTo ErrorOccured
+
+	DTSTGetMaximumTileLevel = mnMaximumTileLevel
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetMaximumTileLevel")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTileOrigin() As Integer		'TILE_ORIGIN_SW or TILE_ORIGIN_NW
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTileOrigin = mnTileOrigin
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTileOrigin")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTileOriginAsText() As String		'TILE_ORIGIN_SW or TILE_ORIGIN_NW
+
+OnError GoTo ErrorOccured
+
+DTSTGetTileOriginAsText = ""
+
+	Do Case DTSTGetTileOrigin()
+		Case TILE_ORIGIN_SW
+			DTSTGetTileOriginAsText = "SW"
+		Case TILE_ORIGIN_NW
+			DTSTGetTileOriginAsText = "NW"
+	End Case
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTileOriginAsText")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTilePixelWidth() As Integer
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTilePixelWidth = mnTilePixelWidth
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTilePixelWidth")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetTilePixelHeight() As Integer
+
+OnError GoTo ErrorOccured
+
+	DTSTGetTilePixelHeight = mnTilePixelHeight
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetTilePixelHeight")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetCoordSysEPSG() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetCoordSysEPSG = msCoordSysEPSG
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetCoordSysEPSG")
+	Call ERRShow()
+
+End Function
+
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'**********************************************************************************************''
+Function DTSTGetCoordSysItem() As Integer
+
+OnError GoTo ErrorOccured
+
+	DTSTGetCoordSysItem = mnCoordsysItem
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetCoordSysItem")
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Function DTSTGetCoordSys() As String
+
+OnError GoTo ErrorOccured
+
+	DTSTGetCoordSys = marrCoordsys(DTSTGetCoordSysItem())
+'	DTSTGetCoordSys = EPSGToCoordSysString$("EPSG:" & DTSTGetCoordSysEPSG())
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTGetCoordSys")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DTSTCreateTileServerTable()
+
+Dim	sCmd As String
+
+OnError GoTo ErrorOccured
+
+	If TABIsOpen(DTSTGetTableName()) Then
+		Close Table DTSTGetTableName()
+	End If
+	If FileExists(DTSTGetTabFileName()) Then
+		If Ask("This file already exists: " & DTSTGetTabFileName() & lf & "Do you want to overwrite it?", "No", "Yes") Then
+			Exit Sub
+		End If
+	End If
+
+	sCmd = "Create Table " & eye & DTSTGetTableName() & eye
+			& " File " & eye & DTSTGetTabFileName() & eye
+			& " Type TILESERVER"
+			& " TileType " & eye & DTSTGetTileServerTypeAsText() & eye
+			& " URL " & eye & DTSTGetURL() & eye
+
+	sCmd = IIf(DTSTGetAttributionText() = "", sCmd, sCmd & " AttributionText " & eye & DTSTGetAttributionText() & eye & " " & DTSTGetAttributionFont())
+
+	sCmd = sCmd
+			& " StartTileNum " & DTSTGetStartTile()
+			& " Minlevel " & DTSTGetMinimumTileLevel()
+			& " MaxLevel " & DTSTGetMaximumTileLevel()
+			& " Origin " & eye & DTSTGetTileOriginAsText() & eye
+			& " Height " & DTSTGetTilePixelHeight() & " Width " & DTSTGetTilePixelWidth()
+			& " " & DTSTGetCoordSys()
+
+	Print sCmd
+	Run Command sCmd
+
+	If FrontWindow() > 0 Then
+		If WindowInfo(FrontWindow(), WIN_INFO_TYPE) = WIN_MAPPER Then
+			Add Map
+				Window FrontWindow()
+				Layer DTSTGetTableName()
+
+			Exit Sub
+		End If
+	End If
+
+	Map From DTSTGetTableName()
+	Set Map Zoom Entire Layer DTSTGetTableName()
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DTSTCreateTileServerTable")
+	Call ERRShow()
+
+End Sub

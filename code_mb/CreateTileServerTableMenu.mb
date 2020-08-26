@@ -1,0 +1,170 @@
+'*******************************************************************************
+'**   Created by Peter Horsbøll Møller, Pitney Bowes
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "Enums.def"
+Include "Icons.def"
+Include "MapBasic.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+Include "Library\MI_ICONS_X64.def"
+
+Define xProgram 		"Create Tile Server Table"
+Define xProgramMenu		"CreateTileServerTable"
+Define xVersion 		"1.10"
+Define xYear			"2020"
+Define xAddToMenuBar	FALSE
+
+Define FILE_INI			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgramMenu & ".ini"
+Define FILE_DBG			ApplicationDirectory$() & xProgramMenu & ".dbg"
+'Define FILE_DLL			ApplicationDirectory$() & xProgramMenu & ".dll"
+Define FILE_PAD			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgram & ".btp"
+Define FILE_HLP			ApplicationDirectory$() & xProgramMenu & ".pdf"
+
+'-------------------------------------
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\ProgramInfo.def"
+Include "Library\RIBBONLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGTileServerTable.def"
+
+'-----------------------------------------------------------------------------------------
+Declare Sub Main
+Declare Sub EndProgram
+Declare Sub EndHandler
+
+Declare Sub MENUCreateTileServerTable
+
+'**********************************************************************************************''
+'**   Created by Peter Horsbøll Møller, Pitney Bowes
+'
+'**********************************************************************************************''
+Sub Main
+
+Dim	nCtrlIdx As Integer,
+	sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName As String
+
+OnError GoTo ErrorOccured
+
+	'***Initializing ApplicationInfo
+	Call PRGISetApplicationName(xProgram)
+	Call PRGISetApplicationVersion(xVersion)
+	Call PRGISetApplicationCopyrightYear(xYear)
+	Call PRGISetApplicationHelpFile(FILE_HLP)
+	Call PRGISetApplicationImageUri(MI_IMG_APP_OPENWMTS_16)
+	Call PRGISetApplicationDevelopedBy("Peter Horsbøll Møller")
+
+	'***Enabling Debug if file exists
+	Call DEBUGEnableByFile(FILE_DBG)
+
+	Call DTSTSetConfigFileName(FILE_INI)
+	Call DTSTReadConfigFile
+
+	sTabName				= "TabHome"
+	sGroupName			= "HomeFile"
+	sSplitButtonName		= "HomeFileOpenGallerySplitButton"
+     sSplitButtonGroupName	= "WebServices"
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdCreateTileServerTableHome", "Tile Server", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Createa a new Tile Server Table", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_APP_OPENWMTS_16, MI_IMG_APP_OPENWMTS_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCreateTileServerTable")
+		Call RBNControlSetWidthIdx(nCtrlIdx, 70)
+	End If
+
+	sTabName				= "TabTable"
+	sGroupName			= "TableData"
+	sSplitButtonName		= "TableFileOpenGallerySplitButton"
+     sSplitButtonGroupName	= "WebServices"
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdCreateTileServerTableTable", "Tile Server", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Createa a new Tile Server Table", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_APP_OPENWMTS_16, MI_IMG_APP_OPENWMTS_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCreateTileServerTable")
+		Call RBNControlSetWidthIdx(nCtrlIdx, 70)
+	End If
+
+	sTabName				= "TabMap"
+	sGroupName			= "MapFile"
+	sSplitButtonName		= "MapFileOpenGallerySplitButton"
+     sSplitButtonGroupName	= "WebServices"
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdCreateTileServerTableMap", "Tile Server", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Createa a new Tile Server Table", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_APP_OPENWMTS_16, MI_IMG_APP_OPENWMTS_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUCreateTileServerTable")
+		Call RBNControlSetWidthIdx(nCtrlIdx, 70)
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "Main")
+	Call ERRShow()
+
+End Sub
+
+'****************************************
+'**   Created by Peter Horsbøll Møller, Pitney Bowes
+'**   Ending MapBasic application
+'****************************************
+Sub EndProgram
+
+OnError GoTo ErrorOccured
+
+	End Program
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "EndProgram")
+	Call ERRShow()
+
+End Sub
+
+'****************************************
+'**   Created by Peter Horsbøll Møller, Pitney Bowes
+'**   Ending MapBasic application
+'****************************************
+Sub EndHandler
+
+OnError GoTo ErrorOccured
+
+	Call RBNEndHandler
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "EndProgram")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MENUCreateTileServerTable
+
+OnError GoTo ErrorOccured
+
+	If not DLGTileServerTable() then
+
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUCreateTileServerTable")
+	Call ERRShow()
+
+End Sub
